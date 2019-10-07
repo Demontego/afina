@@ -18,7 +18,8 @@ bool SimpleLRU::Put(const std::string &key, const std::string &value) {
 bool SimpleLRU::PutIfAbsent(const std::string &key, const std::string &value) {
     if ((key.size() + value.size()) > _max_size)
         return false;
-    if (_lru_index.find(key) == _lru_index.end())
+mapT::iterator it=_lru_index.find(key);
+    if (it == _lru_index.end())
         return put_node(key, value);
     else
         return false;
@@ -69,7 +70,7 @@ bool SimpleLRU::put_node(const std::string &key, const std::string &value) {
         _lru_head.swap(new_node);
     }
 
-    _lru_index.insert(std::make_pair(key, std::reference_wrapper<lru_node>(*_lru_tail)));
+    _lru_index.insert(std::make_pair(std::reference_wrapper< std::string>(_lru_tail->key), std::reference_wrapper<lru_node> (*_lru_tail)));
     return true;
 }
 
