@@ -8,6 +8,7 @@
 #include <queue>
 #include <string>
 #include <thread>
+#include <algorithm>
 
 namespace Afina {
 namespace Concurrency {
@@ -28,8 +29,12 @@ class Executor {
         kStopped
     };
 
-    Executor(std::string name, int size);
-    ~Executor();
+    Executor(std::string name, std::size_t size,std::size_t high=6, std::size_t low=0,std::size_t timeout=100):
+    _max_queue_size(size), _high_watermark(high), _low_watermark(low), _idle_time(timeout), _free_threads(0){}
+    ~Executor()
+    {
+        Stop(true);
+    }
 
     /**
      * Signal thread pool to stop, it will stop accepting new jobs and close threads just after each become
@@ -97,6 +102,14 @@ private:
      * Flag to stop bg threads
      */
     State state;
+
+    std::condition_variable stop_condition;
+
+    std::size_t _high_watermark;
+    std::size_t _low_watermark;
+    std::size_t _max_queue_size;
+    std::chrono::milliseconds _idle_time;
+    std::size_t _free_threads;
 };
 
 } // namespace Concurrency
