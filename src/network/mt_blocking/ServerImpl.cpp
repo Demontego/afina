@@ -96,7 +96,6 @@ void ServerImpl::Join() {
     }
     assert(_thread.joinable());
     _thread.join();
-    close(_server_socket);
 }
 
 // See Server.h
@@ -141,7 +140,7 @@ void ServerImpl::OnRun() {
         // TODO: Start new thread and process data from/to connection
         try {
             std::lock_guard<std::mutex> lock(_mutex);
-            if (_workers.size() >= _max_threads) {
+            if ((_workers.size() >= _max_threads)||(!running.load())) {
                 static const std::string msg = "The limit exceeded";
                 close(client_socket);
                 if (send(client_socket, msg.data(), msg.size(), 0) <= 0)
@@ -153,6 +152,7 @@ void ServerImpl::OnRun() {
             _logger->error("Failed to process connection on descriptor {}: {}", client_socket, ex.what());
         }
     }
+    close(_server_socket);
     // Cleanup on exit...
     _logger->warn("Network stopped");
 }
@@ -249,7 +249,7 @@ void ServerImpl::RUN(int client_socket) {
         it->second.detach();
         _workers.erase(it);
         if (_workers.size() == 0)
-            _join_threads.notify_one();
+            _join_threads.notify_all();
     }
 }
 } // namespace MTblocking
