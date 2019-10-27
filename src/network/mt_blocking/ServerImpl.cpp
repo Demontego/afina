@@ -248,7 +248,7 @@ void ServerImpl::RUN(int client_socket) {
         auto it = _workers.find(client_socket);
         it->second.detach();
         _workers.erase(it);
-        if (_workers.size() == 0)
+        if ((_workers.size() == 0) && !running.load())
             _join_threads.notify_all();
     }
 }
