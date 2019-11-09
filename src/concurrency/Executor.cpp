@@ -15,6 +15,7 @@ void perform(Executor *executor){
     while(executor->state==Executor::State::kRun)
     {
         std::unique_lock<std::mutex> lock(executor->mutex);
+				//auto now=std::chrono::system_clock::now();
         while((executor->state==Executor::State::kRun)&&executor->tasks.empty())
         {
             ++executor->_free_threads;
@@ -46,6 +47,7 @@ void perform(Executor *executor){
             if(it!=executor->threads.end())
             {
                 --executor->_free_threads;
+								//it.detuch();
                 executor->threads.erase(it);
             }
             if(executor->threads.size()>0)

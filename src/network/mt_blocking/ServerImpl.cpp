@@ -239,8 +239,7 @@ void ServerImpl::RUN(int client_socket) {
         _logger->error("Failed to process connection on descriptor {}: {}", client_socket, ex.what());
     }
 
-    // We are done with this connection
-    close(client_socket);
+
 
     // Prepare for the next command: just in case if connection was closed in the middle of executing something
     {
@@ -248,6 +247,7 @@ void ServerImpl::RUN(int client_socket) {
         auto it = _workers.find(client_socket);
         it->second.detach();
         _workers.erase(it);
+        close(client_socket);
         if ((_workers.size() == 0) && !running.load())
             _join_threads.notify_all();
     }
