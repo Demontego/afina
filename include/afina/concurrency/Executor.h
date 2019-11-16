@@ -9,6 +9,7 @@
 #include <string>
 #include <thread>
 #include <algorithm>
+#include <unordered_map>
 
 namespace Afina {
 namespace Concurrency {
@@ -36,6 +37,7 @@ class Executor {
         Stop(true);
     }
 
+    void Start();
     /**
      * Signal thread pool to stop, it will stop accepting new jobs and close threads just after each become
      * free. All enqueued jobs will be complete.
@@ -91,7 +93,7 @@ private:
     /**
      * Vector of actual threads that perorm execution
      */
-    std::vector<std::thread> threads;
+    std::unordered_map<std::thread::id,std::thread> threads;
 
     /**
      * Task queue

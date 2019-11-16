@@ -22,9 +22,7 @@ void perform(Executor *executor) {
                 ++executor->_free_threads;
                 if ((executor->empty_condition.wait_until(lock, timeout) == std::cv_status::timeout) &&
                     (executor->threads.size() > executor->_low_watermark)) {
-                    std::vector<std::thread>::iterator it =
-                        std::find_if(executor->threads.begin(), executor->threads.end(),
-                                     [](std::thread &t) { return t.get_id() == std::this_thread::get_id(); });
+                    auto it =executor->threads.find(std::this_thread::get_id());
                     if (it != executor->threads.end()) {
                         --executor->_free_threads;
                         executor->threads.erase(it);
@@ -45,20 +43,28 @@ void perform(Executor *executor) {
         {
             std::unique_lock<std::mutex> lock(executor->mutex);
             if (executor->state == Executor::State::kStopping) {
-                std::vector<std::thread>::iterator it =
-                    std::find_if(executor->threads.begin(), executor->threads.end(),
-                                 [](std::thread &t) { return t.get_id() == std::this_thread::get_id(); });
+                auto it =executor->threads.find(std::this_thread::get_id());
                 if (it != executor->threads.end()) {
                     --executor->_free_threads;
-                    (*it).detach();
+                    it->second.detach();
                     executor->threads.erase(it);
                 }
-                if (executor->threads.size() > 0) {
+                if (executor->threads.size() == 0) {
                     executor->state = Executor::State::kStopped;
-                    executor->stop_condition.notify_one();
+                    executor->stop_condition.notify_all();
                 }
             }
         }
+    }
+}
+
+void Executor::Start()
+{
+    std::unique_lock<std::mutex> lock(mutex);
+    state=State::kRun;
+    for(std::size_t i=0;i<_low_watermark;++i){
+        std::thread t(&(perform), this);
+        threads.insert(std::move(std::make_pair(t.get_id(), std::move(t))));
     }
 }
 } // namespace Concurrency
