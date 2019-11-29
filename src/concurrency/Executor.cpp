@@ -5,12 +5,14 @@ namespace Concurrency {
 
 void Executor::Stop(bool await) {
     std::unique_lock<std::mutex> lock(mutex);
-    state = State::kStopping;
-    while (tasks.size() > 0)
-        empty_condition.notify_one();
-    if (await)
-        while (state == State::kStopping)
-            stop_condition.wait(lock);
+    if(state==State::kRun){
+        state=State::kStopping;
+        if(await && threads>0){
+            stop_condition.wait(lock,[&](){ return threads==0;});
+        }
+    }else{
+        state=State::kStopped;
+    }
 }
 void perform(Executor *executor) {
     std::function<void()> task;
@@ -21,13 +23,9 @@ void perform(Executor *executor) {
             while ((executor->state == Executor::State::kRun) && executor->tasks.empty()) {
                 ++executor->_free_threads;
                 if ((executor->empty_condition.wait_until(lock, timeout) == std::cv_status::timeout) &&
-                    (executor->threads.size() > executor->_low_watermark)) {
-                    auto it =executor->threads.find(std::this_thread::get_id());
-                    if (it != executor->threads.end()) {
-                        --executor->_free_threads;
-                        executor->threads.erase(it);
-                    }
-                    return;
+                    (executor->threads > executor->_low_watermark)) {
+                    --executor->_free_threads;
+
                 } else {
                     executor->empty_condition.wait(lock);
                 }
@@ -39,20 +37,16 @@ void perform(Executor *executor) {
             task = executor->tasks.front();
             executor->tasks.pop_front();
         }
-        task();
+        try{
+            task();
+        }catch(...){
+            std::terminate();
+        }
         {
             std::unique_lock<std::mutex> lock(executor->mutex);
-            if (executor->state == Executor::State::kStopping) {
-                auto it =executor->threads.find(std::this_thread::get_id());
-                if (it != executor->threads.end()) {
-                    --executor->_free_threads;
-                    it->second.detach();
-                    executor->threads.erase(it);
-                }
-                if (executor->threads.size() == 0) {
+            if (executor->state == Executor::State::kStopping && executor->threads==0) {
                     executor->state = Executor::State::kStopped;
                     executor->stop_condition.notify_all();
-                }
             }
         }
     }
@@ -64,7 +58,8 @@ void Executor::Start()
     state=State::kRun;
     for(std::size_t i=0;i<_low_watermark;++i){
         std::thread t(&(perform), this);
-        threads.insert(std::move(std::make_pair(t.get_id(), std::move(t))));
+        t.detach();
+        ++threads;
     }
 }
 } // namespace Concurrency
