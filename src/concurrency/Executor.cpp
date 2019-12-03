@@ -40,7 +40,7 @@ void perform(Executor *executor) {
         try{
             task();
         }catch(...){
-            std::terminate();
+            //std::terminate();
         }
         {
             std::unique_lock<std::mutex> lock(executor->mutex);
