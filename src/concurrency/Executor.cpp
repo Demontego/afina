@@ -25,7 +25,7 @@ void perform(Executor *executor) {
                 if ((executor->empty_condition.wait_until(lock, timeout) == std::cv_status::timeout) &&
                     (executor->threads > executor->_low_watermark)) {
                     --executor->_free_threads;
-
+                    return;
                 } else {
                     executor->empty_condition.wait(lock);
                 }

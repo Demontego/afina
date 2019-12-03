@@ -58,6 +58,9 @@ class Executor {
         auto exec = std::bind(std::forward<F>(func), std::forward<Types>(args)...);
 
         std::unique_lock<std::mutex> lock(this->mutex);
+        if (tasks.size()>=_max_queue_size){
+          return false;
+        }
         if (state != State::kRun) {
             return false;
         }
