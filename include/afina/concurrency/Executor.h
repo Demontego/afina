@@ -1,6 +1,7 @@
 #ifndef AFINA_CONCURRENCY_EXECUTOR_H
 #define AFINA_CONCURRENCY_EXECUTOR_H
 
+#include <algorithm>
 #include <condition_variable>
 #include <functional>
 #include <memory>
@@ -8,7 +9,6 @@
 #include <queue>
 #include <string>
 #include <thread>
-#include <algorithm>
 #include <unordered_map>
 
 namespace Afina {
@@ -30,12 +30,10 @@ class Executor {
         kStopped
     };
 
-    Executor(std::string name, std::size_t size,std::size_t high=6, std::size_t low=1,std::size_t timeout=100):
-    _max_queue_size(size), _high_watermark(high), _low_watermark(low), _idle_time(timeout), _free_threads(0), threads(0){}
-    ~Executor()
-    {
-        Stop(true);
-    }
+    Executor(std::string name, std::size_t size, std::size_t high = 6, std::size_t low = 1, std::size_t timeout = 100)
+        : _max_queue_size(size), _high_watermark(high), _low_watermark(low), _idle_time(timeout), _free_threads(0),
+          threads(0) {}
+    ~Executor() { Stop(true); }
 
     void Start();
     /**
@@ -58,8 +56,8 @@ class Executor {
         auto exec = std::bind(std::forward<F>(func), std::forward<Types>(args)...);
 
         std::unique_lock<std::mutex> lock(this->mutex);
-        if (tasks.size()>=_max_queue_size){
-          return false;
+        if (tasks.size() >= _max_queue_size) {
+            return false;
         }
         if (state != State::kRun) {
             return false;
@@ -96,7 +94,7 @@ private:
     /**
      * Vector of actual threads that perorm execution
      */
-    //std::unordered_map<std::thread::id,std::thread> threads;
+    // std::unordered_map<std::thread::id,std::thread> threads;
     std::size_t threads;
     /**
      * Task queue
