@@ -9,13 +9,15 @@ namespace MTnonblock {
 
 // See Connection.h
 void Connection::Start() {
+    std::lock_guard<std::mutex> lock(mutex);
     _logger->info("Start st_nonblocking network connection on descriptor {} \n", _socket);
-    _is_alive=true;
-    //EPOLLIN - The associated file is available for read(2) operations.
-    //EPOLLPRI - There is urgent data available for read(2) operations.
-    //EPOLLRDHUP - Stream socket peer closed connection, or shut down writing half of connection.
-    //EPOLLERR - Error condition happened on the associated file descriptor
-    _event.events= EPOLLIN | EPOLLPRI | EPOLLRDHUP; //| EPOLLERR; - epoll_wait(2) will always wait for this event; it is not necessary to set it in events
+    _is_alive = true;
+    // EPOLLIN - The associated file is available for read(2) operations.
+    // EPOLLPRI - There is urgent data available for read(2) operations.
+    // EPOLLRDHUP - Stream socket peer closed connection, or shut down writing half of connection.
+    // EPOLLERR - Error condition happened on the associated file descriptor
+    _event.events = EPOLLIN | EPOLLPRI | EPOLLRDHUP; //| EPOLLERR; - epoll_wait(2) will always wait for this event; it
+                                                     // is not necessary to set it in events
     _event.data.fd = _socket;
     _event.data.ptr = this;
 }
@@ -29,11 +31,12 @@ void Connection::OnError() {
 // See Connection.h
 void Connection::OnClose() {
     _logger->debug("Close connection of descriptor {} \n", _socket);
-    _is_alive=false;
+    _is_alive = false;
 }
 
 // See Connection.h
 void Connection::DoRead() {
+    std::lock_guard<std::mutex> lock(mutex);
     _logger->debug("Read from connection on descriptor {} \n", _socket);
     try {
         int readed_bytes = -1;
@@ -90,7 +93,7 @@ void Connection::DoRead() {
                     command_to_execute->Execute(*pStorage, argument_for_command, result);
 
                     // Send response
-                    _results += result+"\r\n";
+                    _results += result + "\r\n";
                     _event.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP; // |EPOLLERR
 
                     // Prepare for the next command
@@ -100,38 +103,38 @@ void Connection::DoRead() {
                 }
             } // while (readed_bytes)
         }
-        //EAGAIN - Resource temporarily unvailable
-        if (readed_bytes == 0 || errno == EAGAIN)
-        {
+        // EAGAIN - Resource temporarily unvailable
+        if (readed_bytes == 0 || errno == EAGAIN) {
             _logger->debug("Client stop to write to connection on descriptor {}", _socket);
         } else {
             throw std::runtime_error(std::string(strerror(errno)));
         }
-    }catch(std::runtime_error &ex){
+    } catch (std::runtime_error &ex) {
         _logger->error("failed to read from connection on descriptor {}: {}", _socket, ex.what());
     }
 }
 
 // See Connection.h
 void Connection::DoWrite() {
+    std::lock_guard<std::mutex> lock(mutex);
     _logger->debug("Writing in connection on descriptor {} \n", _socket);
-    try{
+    try {
         int writed_bytes = send(_socket, _results.data(), _results.size(), 0);
-        if(writed_bytes > 0){
-            if(writed_bytes < _results.size()){
+        if (writed_bytes > 0) {
+            if (writed_bytes < _results.size()) {
                 _results.erase(0, writed_bytes);
-                //EPOLLOUT - The associated file is available for write(2) operations.
+                // EPOLLOUT - The associated file is available for write(2) operations.
                 _event.events = EPOLLIN | EPOLLRDHUP | EPOLLOUT;
-            }else{
+            } else {
                 _results.clear();
                 _event.events = EPOLLIN | EPOLLRDHUP;
             }
-        }else{
+        } else {
             throw std::runtime_error("Failed to write result");
         }
-    }catch(std::runtime_error &ex){
+    } catch (std::runtime_error &ex) {
         _logger->error("Failed to writing to connection on descriptor {}: {} \n", _socket, ex.what());
-        _is_alive=false;
+        _is_alive = false;
     }
 }
 
