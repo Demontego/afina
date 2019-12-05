@@ -44,6 +44,7 @@ void perform(Executor *executor) {
         }
         {
             std::unique_lock<std::mutex> lock(executor->mutex);
+            --executor->threads;
             if (executor->state == Executor::State::kStopping && executor->threads==0) {
                     executor->state = Executor::State::kStopped;
                     executor->stop_condition.notify_all();
