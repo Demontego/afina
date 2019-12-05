@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <vector>
 
 #include <afina/Storage.h>
 #include <afina/logging/Service.h>
@@ -42,10 +43,14 @@ private:
     std::shared_ptr<spdlog::logger> _logger;
     std::shared_ptr<Afina::Storage> pStorage;
     std::unique_ptr<Afina::Execute::Command> command_to_execute;
-    std::string _results;
+    std::vector<std::string> _results;
     Protocol::Parser parser;
     std::size_t arg_remains;
     std::string argument_for_command;
+
+    int _written_bytes;
+    int _read_bytes;
+    char client_buffer[4096];
 };
 
 } // namespace STnonblock

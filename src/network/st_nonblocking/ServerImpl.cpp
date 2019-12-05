@@ -91,7 +91,7 @@ void ServerImpl::Stop() {
     if (eventfd_write(_event_fd, 1)) {
         throw std::runtime_error("Failed to wakeup workers");
     }
-    for(auto &it: _connections){
+    for(auto it: _connections){
         close(it->_socket);
         delete it;
     }
@@ -177,7 +177,7 @@ void ServerImpl::OnRun() {
 
                     close(pc->_socket);
                     pc->OnClose();
-
+                    _connections.erase(pc);
                     delete pc;
                 }
             }
