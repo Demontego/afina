@@ -16,14 +16,14 @@ void Executor::Stop(bool await) {
 }
 void perform(Executor *executor) {
     std::function<void()> task;
-    while (executor->state == Executor::State::kRun) {
+    while (executor->state == Executor::State::kRun && !executor->tasks.empty()) {
         {
             std::unique_lock<std::mutex> lock(executor->mutex);
             auto timeout = std::chrono::system_clock::now() + executor->_idle_time;
             while ((executor->state == Executor::State::kRun) && executor->tasks.empty()) {
                 if ((executor->empty_condition.wait_until(lock, timeout) == std::cv_status::timeout) &&
                     (executor->_active_threads+executor->_free_threads > executor->_low_watermark)) {
-                    return;
+                    break;
                 } else {
                     executor->empty_condition.wait(lock);
                 }
@@ -42,13 +42,17 @@ void perform(Executor *executor) {
             std::terminate();
         }
         {
-            std::unique_lock<std::mutex> lock(executor->mutex);
+             std::unique_lock<std::mutex> lock(executor->mutex);
             ++executor->_free_threads;
             --executor->_active_threads;
-            if (executor->state == Executor::State::kStopping && executor->tasks.size()==0) {
-                    executor->state = Executor::State::kStopped;
-                    executor->stop_condition.notify_all();
-            }
+        }
+    }
+    {
+        std::unique_lock<std::mutex> lock(executor->mutex);
+        --executor->_free_threads;
+        if (executor->state == Executor::State::kStopping && executor->tasks.size()==0) {
+            executor->state = Executor::State::kStopped;
+            executor->stop_condition.notify_all();
         }
     }
 }
