@@ -65,6 +65,11 @@ class Executor {
 
         // Enqueue new task
         tasks.push_back(exec);
+        if (_active_threads+_free_threads < _high_watermark && _free_freads == 0) {
+            std::thread t(&perform, this);
+            t.detach();
+            --_active_threads;
+        }
         empty_condition.notify_one();
         return true;
     }
