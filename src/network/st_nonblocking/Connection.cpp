@@ -145,12 +145,13 @@ void Connection::DoWrite() {
         void  *iov_base;
         size_t iov_len; };
         */
-        for (std::size_t i = 0; i < size; ++i, ++it) {
+        for (std::size_t i = 1; i < size; ++i, ++it) {
             iov[i].iov_base = &(*it)[0]; // begin of string, which in vector;
             iov[i].iov_len = (*it).size();
         }
-        iov[0].iov_base = reinterpret_cast<void *>(reinterpret_cast<uint8_t *>(iov[0].iov_base) + _written_bytes);
-        iov[0].iov_len -= _written_bytes;
+        it=_results.begin() + _written_bytes;
+        iov[0].iov_base =  &(*it)[0];
+        iov[0].iov_len = _results[0].size() - _written_bytes;
 
         int written = writev(_socket, iov, size); //Системный вызов writev() записывает iovcnt буферов, описанных iov,
         _written_bytes += written; // в файл, связанный с файловым дескриптором fd («сборный вывод»).
