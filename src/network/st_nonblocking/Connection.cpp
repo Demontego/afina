@@ -148,9 +148,8 @@ void Connection::DoWrite() {
             iov[i].iov_base = &(*it)[0]; // begin of string, which in vector;
             iov[i].iov_len = (*it).size();
         }
-        auto real_begin = _results[0].begin() + _written_bytes;
-        iov[0].iov_base = &(*real_begin);
-        iov[0].iov_len = _results[0].size() - _written_bytes;
+        iov[0].iov_base = (char *)iov[0].iov_base + _written_bytes;
+        iov[0].iov_len -= _written_bytes;
 
         int written = writev(_socket, iov, size); //Системный вызов writev() записывает iovcnt буферов, описанных iov,
         _written_bytes += written; // в файл, связанный с файловым дескриптором fd («сборный вывод»).
