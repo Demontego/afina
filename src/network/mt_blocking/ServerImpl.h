@@ -2,6 +2,9 @@
 #define AFINA_NETWORK_MT_BLOCKING_SERVER_H
 
 #include <atomic>
+#include <condition_variable>
+#include <map>
+#include <mutex>
 #include <thread>
 
 #include <afina/network/Server.h>
@@ -48,10 +51,15 @@ private:
     std::atomic<bool> running;
 
     // Server socket to accept connections on
-    int _server_socket;
+    int _server_socket, _max_threads = 4;
 
     // Thread to run network on
     std::thread _thread;
+
+    std::mutex _mutex;
+    std::map<int, std::thread> _workers;
+    std::condition_variable _join_threads;
+    void RUN(int client_socket);
 };
 
 } // namespace MTblocking
