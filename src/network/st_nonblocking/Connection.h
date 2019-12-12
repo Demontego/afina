@@ -50,6 +50,7 @@ private:
 
     int _written_bytes;
     int _read_bytes;
+    int _bytes_for_read;
     char client_buffer[4096];
 };
 
