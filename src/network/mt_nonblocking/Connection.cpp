@@ -10,15 +10,14 @@ namespace MTnonblock {
 
 // See Connection.h
 void Connection::Start() {
-    std::unique_lock<std::mutex> lock(mutex);
     _logger->info("Start st_nonblocking network connection on descriptor {} \n", _socket);
+    std::unique_lock<std::mutex> lock(mutex);
     _is_alive = true;
     // EPOLLIN - The associated file is available for read(2) operations.
     // EPOLLPRI - There is urgent data available for read(2) operations.
     // EPOLLRDHUP - Stream socket peer closed connection, or shut down writing half of connection.
     // EPOLLERR - Error condition happened on the associated file descriptor
-    _event.events = EPOLLIN | EPOLLPRI | EPOLLRDHUP; //| EPOLLERR; - epoll_wait(2) will always wait for this event; it
-                                                     // is not necessary to set it in events
+    _event.events = EPOLLIN | EPOLLPRI | EPOLLRDHUP; //| EPOLLERR;
     command_to_execute.reset();
     argument_for_command.resize(0);
     parser.Reset();
@@ -29,19 +28,12 @@ void Connection::Start() {
     _read_bytes = 0;
     _results.clear();
     _event.data.ptr = this;
-    /* typedef union epoll_data {
-    void    *ptr;
-    int      fd;
-    uint32_t u32;
-    uint64_t u64;
-} epoll_data_t;
-*/
 }
 
 // See Connection.h
 void Connection::OnError() {
-    std::unique_lock<std::mutex> lock(mutex);
     _logger->error("Error in connection on descriptor {} \n", _socket);
+    std::unique_lock<std::mutex> lock(mutex);
     OnClose();
 }
 
@@ -54,12 +46,12 @@ void Connection::OnClose() {
 
 // See Connection.h
 void Connection::DoRead() {
-    std::unique_lock<std::mutex> lock(mutex);
     _logger->debug("Read from connection on descriptor {} \n", _socket);
+    std::unique_lock<std::mutex> lock(mutex);
     int client_socket = _socket;
-    command_to_execute=nullptr;
+    command_to_execute = nullptr;
     try {
-        int _bytes_for_read;
+        _bytes_for_read = 0;
         while ((_bytes_for_read =
                     read(client_socket, client_buffer + _read_bytes, sizeof(client_buffer) - _read_bytes)) > 0) {
             //_logger->debug("Got {} bytes from socket", _read_bytes);
@@ -110,15 +102,12 @@ void Connection::DoRead() {
 
                     std::string result;
                     command_to_execute->Execute(*pStorage, argument_for_command, result);
-                    bool ff=0;
-                    if(_results.empty()){
-                        ff=1;
-                    }
+                    bool fuckingflag = _results.empty();
                     // Send response
                     result += "\r\n";
                     _results.push_back(result);
-                    if (ff) {
-                        _event.events = (EPOLLIN | EPOLLOUT | EPOLLRDHUP);
+                    if (fuckingflag) {
+                        _event.events |= EPOLLOUT;
                     };
 
                     // Prepare for the next command
@@ -130,7 +119,7 @@ void Connection::DoRead() {
         }
         // EAGAIN - Resource temporarily unvailable
         _logger->debug("Client stop to write to connection on descriptor {}", client_socket);
-        if (_read_bytes > 0 && errno != EAGAIN) {
+        if (errno == EAGAIN) {
             throw std::runtime_error(std::string(strerror(errno)));
         }
     } catch (std::runtime_error &ex) {
@@ -140,17 +129,13 @@ void Connection::DoRead() {
 
 // See Connection.h
 void Connection::DoWrite() {
-    std::unique_lock<std::mutex> lock(mutex);
     _logger->debug("Writing in connection on descriptor {} \n", _socket);
+    std::unique_lock<std::mutex> lock(mutex);
+    assert(!_results.empty());
     try {
         std::size_t size = _results.size();
         auto it = _results.begin();
         struct iovec iov[size];
-        /*
-        struct iovec {
-        void  *iov_base;
-        size_t iov_len; };
-        */
         for (std::size_t i = 1; i < size; ++i, ++it) {
             iov[i].iov_base = &(*it)[0]; // begin of string, which in vector;
             iov[i].iov_len = (*it).size();
@@ -158,16 +143,16 @@ void Connection::DoWrite() {
         iov[0].iov_base = (char *)iov[0].iov_base + _written_bytes;
         iov[0].iov_len -= _written_bytes;
 
-        int written = writev(_socket, iov, size); //Системный вызов writev() записывает iovcnt буферов, описанных iov,
-        _written_bytes += written; // в файл, связанный с файловым дескриптором fd («сборный вывод»).
+        int written = writev(_socket, iov, size);
+        _written_bytes += written;
         it = _results.begin();
-        for (auto del_it = &iov[0]; (*del_it).iov_len < _written_bytes; ++del_it, ++it) {
-            _written_bytes -= (*del_it).iov_len;
+        while (it != _results.end() && _written_bytes >= it->size()) {
+            _written_bytes -= it->size();
         }
 
         _results.erase(_results.begin(), it);
         if (_results.empty()) {
-            _event.events = (EPOLLIN | EPOLLRDHUP);
+            _event.events |= EPOLLIN;
         }
     } catch (std::runtime_error &ex) {
         _logger->error("Failed to writing to connection on descriptor {}: {} \n", _socket, ex.what());
