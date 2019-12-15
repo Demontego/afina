@@ -6,7 +6,7 @@
 
 namespace Afina {
 namespace Coroutine {
-
+ATTRIBUTE_NO_SANITIZE_ADDRESS
 void Engine::Store(context &ctx) {
     volatile char current_addr;
     ctx.Hight =ctx.Low=StackBottom;
@@ -27,7 +27,7 @@ void Engine::Store(context &ctx) {
     }
     memcpy(buf,ctx.Low,size);
 }
-
+ATTRIBUTE_NO_SANITIZE_ADDRESS
 void Engine::Restore(context &ctx) {
     volatile char current_addr;
     if(ctx.Low<=&current_addr && ctx.Hight>&current_addr)
@@ -37,7 +37,7 @@ void Engine::Restore(context &ctx) {
     memcpy(ctx.Low, std::get<char*>(ctx.Stack), std::get<uint32_t>(ctx.Stack));
     longjmp(ctx.Environment, 1);
 }
-
+ATTRIBUTE_NO_SANITIZE_ADDRESS
 void Engine::yield() {
     if(cur_routine!=nullptr || alive !=nullptr)
     {
@@ -49,7 +49,7 @@ void Engine::yield() {
         sched(ptr);
     }
 }
-
+ATTRIBUTE_NO_SANITIZE_ADDRESS
 void Engine::sched(void *routine_) {
     context *r = (context*)routine_;
     if(r!=cur_routine){
