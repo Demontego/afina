@@ -51,6 +51,12 @@ void Engine::yield() {
 }
 ATTRIBUTE_NO_SANITIZE_ADDRESS
 void Engine::sched(void *routine_) {
+    if (routine_ == nullptr) {
+        yield();
+    }
+    if (cur_routine == routine_) {
+        return;
+    }
     context *r = (context*)routine_;
     if(r!=cur_routine){
         if(!r){
