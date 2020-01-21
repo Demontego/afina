@@ -136,6 +136,7 @@ void Connection::DoWrite() {
         it = _results.begin();
         while (it != _results.end() && _written_bytes >= it->size()) {
             _written_bytes -= it->size();
+            ++it;
         }
 
         _results.erase(_results.begin(), it);
