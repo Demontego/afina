@@ -7,6 +7,12 @@
 #include <setjmp.h>
 #include <tuple>
 
+#if defined(__clang__) || defined (__GNUC__)
+# define ATTRIBUTE_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
+#else
+# define ATTRIBUTE_NO_SANITIZE_ADDRESS
+#endif
+
 namespace Afina {
 namespace Coroutine {
 
@@ -63,12 +69,12 @@ protected:
     /**
      * Save stack of the current coroutine in the given context
      */
-    void Store(context &ctx);
+    ATTRIBUTE_NO_SANITIZE_ADDRESS void Store(context &ctx);
 
     /**
      * Restore stack of the given context and pass control to coroutinne
      */
-    void Restore(context &ctx);
+    ATTRIBUTE_NO_SANITIZE_ADDRESS void Restore(context &ctx);
 
     /**
      * Suspend current coroutine execution and execute given context
@@ -88,7 +94,7 @@ public:
      * Also there are no guarantee what coroutine will get execution, it could be caller of the current one or
      * any other which is ready to run
      */
-    void yield();
+    ATTRIBUTE_NO_SANITIZE_ADDRESS  void yield();
 
     /**
      * Suspend current routine and transfers control to the given one, resumes its execution from the point
@@ -97,7 +103,7 @@ public:
      * If routine to pass execution to is not specified runtime will try to transfer execution back to caller
      * of the current routine, if there is no caller then this method has same semantics as yield
      */
-    void sched(void *routine);
+    ATTRIBUTE_NO_SANITIZE_ADDRESS  void sched(void *routine);
 
     /**
      * Entry point into the engine. Prepare all internal mechanics and starts given function which is
@@ -109,7 +115,7 @@ public:
      * @param pointer to the main coroutine
      * @param arguments to be passed to the main coroutine
      */
-    template <typename... Ta> void start(void (*main)(Ta...), Ta &&... args) {
+    template <typename... Ta> ATTRIBUTE_NO_SANITIZE_ADDRESS  void start(void (*main)(Ta...), Ta &&... args) {
         // To acquire stack begin, create variable on stack and remember its address
         char StackStartsHere;
         this->StackBottom = &StackStartsHere;
@@ -127,6 +133,7 @@ public:
         }
 
         // Shutdown runtime
+        delete[] std::get<0>(idle_ctx->Stack);
         delete idle_ctx;
         this->StackBottom = 0;
     }
@@ -135,7 +142,7 @@ public:
      * Register new coroutine. It won't receive control until scheduled explicitely or implicitly. In case of some
      * errors function returns -1
      */
-    template <typename... Ta> void *run(void (*func)(Ta...), Ta &&... args) {
+    template <typename... Ta> ATTRIBUTE_NO_SANITIZE_ADDRESS void *run(void (*func)(Ta...), Ta &&... args) {
         if (this->StackBottom == 0) {
             // Engine wasn't initialized yet
             return nullptr;
@@ -173,7 +180,7 @@ public:
             // current coroutine finished, and the pointer is not relevant now
             cur_routine = nullptr;
             pc->prev = pc->next = nullptr;
-            delete std::get<0>(pc->Stack);
+            delete[] std::get<0>(pc->Stack);
             delete pc;
 
             // We cannot return here, as this function "returned" once already, so here we must select some other

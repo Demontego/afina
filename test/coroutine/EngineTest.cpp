@@ -39,6 +39,7 @@ void printb(Afina::Coroutine::Engine &pe, std::stringstream &out, void *&other) 
 
 std::stringstream out;
 void *pa = nullptr, *pb = nullptr;
+ATTRIBUTE_NO_SANITIZE_ADDRESS
 void _printer(Afina::Coroutine::Engine &pe, std::string &result) {
     // Create routines, note it doens't get control yet
     pa = pe.run(printa, pe, out, pb);
