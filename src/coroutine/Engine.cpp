@@ -42,7 +42,7 @@ void Engine::yield() {
     if(cur_routine!=nullptr || alive !=nullptr)
     {
         context *ptr;
-        for(ptr=alive; ptr==cur_routine;ptr=ptr->next){
+        for(ptr=alive; ptr!=cur_routine;ptr=ptr->next){
             if(ptr)
                 break;
         }
