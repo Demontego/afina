@@ -43,7 +43,7 @@ void Engine::yield() {
     {
         context *ptr;
         for(ptr=alive; ptr==cur_routine;ptr=ptr->next){
-            if(!ptr)
+            if(ptr)
                 break;
         }
         sched(ptr);
